@@ -1,0 +1,61 @@
+import React from 'react';
+
+const Logo: React.FC<{ className?: string }> = ({ className = "w-10 h-10" }) => {
+  return (
+    <svg 
+      viewBox="0 0 100 100" 
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#F43F5E" />
+          <stop offset="50%" stopColor="#FB7185" />
+          <stop offset="100%" stopColor="#F97316" />
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      
+      {/* Outer circle */}
+      <circle 
+        cx="50" 
+        cy="50" 
+        r="45" 
+        fill="url(#logoGradient)" 
+        filter="url(#glow)"
+      />
+      
+      {/* Inner decorative elements */}
+      <circle cx="50" cy="50" r="35" fill="rgba(255,255,255,0.2)" />
+      
+      {/* Stylized "P" */}
+      <path 
+        d="M35 25 L35 75 M35 25 L55 25 Q65 25 65 35 Q65 45 55 45 L35 45" 
+        stroke="white" 
+        strokeWidth="4" 
+        fill="none" 
+        strokeLinecap="round"
+      />
+      
+      {/* Decorative dots */}
+      <circle cx="25" cy="35" r="2" fill="rgba(255,255,255,0.8)" />
+      <circle cx="75" cy="35" r="2" fill="rgba(255,255,255,0.8)" />
+      <circle cx="25" cy="65" r="2" fill="rgba(255,255,255,0.8)" />
+      <circle cx="75" cy="65" r="2" fill="rgba(255,255,255,0.8)" />
+      
+      {/* Sparkle effect */}
+      <path 
+        d="M70 20 L72 25 L77 23 L72 28 L70 33 L68 28 L63 23 L68 25 Z" 
+        fill="rgba(255,255,255,0.9)"
+      />
+    </svg>
+  );
+};
+
+export default Logo;
