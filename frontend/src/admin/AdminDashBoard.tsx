@@ -5,8 +5,15 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Edit, Trash2, Calendar, Users, DollarSign, 
   Clock, Mail, Phone, MapPin, LogOut, Menu, X,
-  Sparkles, Eye, Droplets, Zap, Shield, Leaf, Star, Heart, Award
+  Sparkles, Eye, Droplets, Zap, Shield, Leaf, Star, Heart, Award,
+  CreditCard,
+  Copy,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
+import axios from 'axios';
 
 // Frontend type (what we display)
 type Treatment = {
@@ -38,13 +45,28 @@ type Rating = {
   createdAt: string;
 };
 
+type Payment = {
+  _id: string;
+  bookingId?: string;
+  amount: number;
+  status: 'success' | 'failed' | 'pending';
+  tx_ref: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  serviceName: string;
+  createdAt: string;
+  // Remove 'method' if you're not using it anymore
+};
+
 export default function AdminDashboard() {
   const nav = useNavigate();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [treatments, setTreatments] = useState<Treatment[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'bookings' | 'treatments' | 'analytics' | 'ratings'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'payments' | 'treatments' | 'analytics' | 'ratings'>('bookings');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAddTreatment, setShowAddTreatment] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
@@ -75,25 +97,15 @@ export default function AdminDashboard() {
     { value: 'award', label: 'Award', icon: Award }
   ];
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      nav('/admin/login');
-      return;
+  // Load payments data
+  const loadPayments = async () => {
+    try {
+      const res = await api.get('/api/payments/all');
+      setPayments(res.data);
+    } catch (err) {
+      console.error('Failed to load payments', err);
+      setError('Failed to load payments data');
     }
-    loadData();
-  }, [nav]);
-
-  // Transform backend data to frontend format
-  const transformBackendToFrontend = (backendData: any[]): Treatment[] => {
-    return backendData.map(item => ({
-      _id: item._id,
-      title: item.name,
-      description: item.description || '',
-      price: `From $${item.price}`,
-      duration: `${item.duration} min`,
-      icon: item.icon || 'sparkles'
-    }));
   };
 
   // Load ratings data
@@ -107,9 +119,23 @@ export default function AdminDashboard() {
       setRatingStats(statsRes.data);
     } catch (err) {
       console.error('Failed to load ratings', err);
+      setError('Failed to load ratings data');
     }
   };
 
+  // Transform backend data to frontend format
+  const transformBackendToFrontend = (backendData: any[]): Treatment[] => {
+    return backendData.map(item => ({
+      _id: item._id,
+      title: item.name,
+      description: item.description || '',
+      price: `From $${item.price}`,
+      duration: `${item.duration} min`,
+      icon: item.icon || 'sparkles'
+    }));
+  };
+
+  // Main data loading function
   const loadData = async () => {
     try {
       setLoading(true);
@@ -119,11 +145,6 @@ export default function AdminDashboard() {
       ]);
       setBookings(bookingsRes.data);
       setTreatments(transformBackendToFrontend(treatmentsRes.data));
-      
-      // Load ratings if on ratings tab
-      if (activeTab === 'ratings') {
-        await loadRatings();
-      }
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to load data');
     } finally {
@@ -131,9 +152,20 @@ export default function AdminDashboard() {
     }
   };
 
-  // Load ratings when ratings tab is active
   useEffect(() => {
-    if (activeTab === 'ratings') {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      nav('/admin/login');
+      return;
+    }
+    loadData();
+  }, [nav]);
+
+  // Load specific data when tab changes
+  useEffect(() => {
+    if (activeTab === 'payments') {
+      loadPayments();
+    } else if (activeTab === 'ratings') {
       loadRatings();
     }
   }, [activeTab]);
@@ -144,6 +176,7 @@ export default function AdminDashboard() {
       setBookings(prev => prev.map(p => p._id === id ? { ...p, status } : p));
     } catch (err) {
       console.error(err);
+      setError('Failed to update booking status');
     }
   };
 
@@ -246,6 +279,7 @@ export default function AdminDashboard() {
             <nav className="hidden md:flex space-x-8 items-center">
               {[
                 { id: 'bookings', label: 'Bookings', icon: Calendar },
+                { id: 'payments', label: 'Payments', icon: DollarSign },
                 { id: 'treatments', label: 'Treatments', icon: Users },
                 { id: 'analytics', label: 'Analytics', icon: DollarSign },
                 { id: 'ratings', label: 'Ratings', icon: Star }
@@ -297,6 +331,7 @@ export default function AdminDashboard() {
               <div className="px-4 py-4 space-y-2">
                 {[
                   { id: 'bookings', label: 'Bookings', icon: Calendar },
+                  { id: 'payments', label: 'Payments', icon: DollarSign },
                   { id: 'treatments', label: 'Treatments', icon: Users },
                   { id: 'analytics', label: 'Analytics', icon: DollarSign },
                   { id: 'ratings', label: 'Ratings', icon: Star }
@@ -392,61 +427,61 @@ export default function AdminDashboard() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Client Info</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Treatment</th> {/* Keep this */}
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Date & Time</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {bookings.map((booking, index) => (
-                        <motion.tr
-                          key={booking._id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                          className="hover:bg-gray-50"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="space-y-1">
-                              <p className="font-semibold text-gray-800">{booking.name}</p>
-                              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                <Mail className="w-3 h-3" />
-                                <span>{booking.email}</span>
-                              </div>
-                              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                <Phone className="w-3 h-3" />
-                                <span>{booking.phone}</span>
-                              </div>
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Client Info</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Treatment</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Date & Time</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {bookings.map((booking, index) => (
+                      <motion.tr
+                        key={booking._id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="space-y-1">
+                            <p className="font-semibold text-gray-800">{booking.name}</p>
+                            <div className="flex items-center space-x-2 text-sm text-gray-600">
+                              <Mail className="w-3 h-3" />
+                              <span>{booking.email}</span>
                             </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div>
-                              <p className="text-gray-800 font-medium">{booking.treatment || 'Not specified'}</p>
-                              {booking.notes && (
-                                <p className="text-xs text-gray-500 mt-1">Notes: {booking.notes}</p>
-                              )}
+                            <div className="flex items-center space-x-2 text-sm text-gray-600">
+                              <Phone className="w-3 h-3" />
+                              <span>{booking.phone}</span>
                             </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <p className="text-gray-600">{new Date(booking.date).toLocaleString()}</p>
-                          </td>
-                          <td className="px-6 py-4">
-                            <select
-                              value={booking.status}
-                              onChange={(e) => setStatus(booking._id, e.target.value as any)}
-                              className={`px-3 py-1 rounded-full text-sm font-medium border-0 ${getStatusColor(booking.status)}`}
-                            >
-                              <option value="pending">Pending</option>
-                              <option value="confirmed">Confirmed</option>
-                              <option value="cancelled">Cancelled</option>
-                            </select>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="text-gray-800 font-medium">{booking.treatment || 'Not specified'}</p>
+                            {booking.notes && (
+                              <p className="text-xs text-gray-500 mt-1">Notes: {booking.notes}</p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-gray-600">{new Date(booking.date).toLocaleString()}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <select
+                            value={booking.status}
+                            onChange={(e) => setStatus(booking._id, e.target.value as any)}
+                            className={`px-3 py-1 rounded-full text-sm font-medium border-0 ${getStatusColor(booking.status)}`}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
                 </table>
                 {bookings.length === 0 && (
                   <div className="text-center py-12">
@@ -455,6 +490,169 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'payments' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-800">Payments Management</h2>
+                <p className="text-gray-600 mt-1">Track all payment transactions</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Transaction ID</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Customer</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Service</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Amount</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Status</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Date</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-800">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {payments.map((payment) => (
+                      <motion.tr
+                        key={payment._id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <CreditCard className="w-4 h-4 text-gray-400" />
+                            <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                              {payment.tx_ref}
+                            </code>
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(payment.tx_ref);
+                                // You can add a toast notification here
+                              }}
+                              className="text-gray-400 hover:text-rose-400 transition-colors"
+                              title="Copy Transaction ID"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-gray-800">
+                              {payment.first_name} {payment.last_name}
+                            </p>
+                            <p className="text-sm text-gray-500">{payment.email}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-gray-700">{payment.serviceName}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-1">
+                            <DollarSign className="w-4 h-4 text-green-500" />
+                            <span className="font-semibold text-gray-800">{payment.amount}</span>
+                            <span className="text-sm text-gray-500">ETB</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            payment.status === 'success' 
+                              ? 'bg-green-100 text-green-800' 
+                              : payment.status === 'failed' 
+                              ? 'bg-red-100 text-red-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {payment.status === 'success' && <CheckCircle className="w-3 h-3 mr-1" />}
+                            {payment.status === 'failed' && <XCircle className="w-3 h-3 mr-1" />}
+                            {payment.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+                            {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-600">
+                            <div>{new Date(payment.createdAt).toLocaleDateString()}</div>
+                            <div className="text-gray-400">{new Date(payment.createdAt).toLocaleTimeString()}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex space-x-2">
+                            <motion.button
+                              onClick={() => {
+                                // Verify payment status
+                                axios.get(`http://localhost:5000/api/payments/verify/${payment.tx_ref}`)
+                                  .then(() => loadPayments())
+                                  .catch(err => console.error('Verification failed:', err));
+                              }}
+                              className="p-2 text-blue-400 hover:text-blue-600 transition-colors"
+                              whileHover={{ scale: 1.1 }}
+                              title="Verify Payment"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </motion.button>
+                            <motion.button
+                              onClick={() => {
+                                // View transaction details
+                                window.open(`https://chapa.co/transaction/${payment.tx_ref}`, '_blank');
+                              }}
+                              className="p-2 text-rose-400 hover:text-rose-600 transition-colors"
+                              whileHover={{ scale: 1.1 }}
+                              title="View in Chapa"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </motion.button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+                {payments.length === 0 && (
+                  <div className="text-center py-12">
+                    <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg">No payments yet</p>
+                    <p className="text-gray-400 text-sm">Payments will appear here once customers start booking</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Payment Statistics */}
+              {payments.length > 0 && (
+                <motion.div 
+                  className="bg-gray-50 px-6 py-4 border-t border-gray-200"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <div className="grid grid-cols-4 gap-4 text-sm">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-800">{payments.length}</div>
+                      <div className="text-gray-600">Total Transactions</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {payments.filter(p => p.status === 'success').length}
+                      </div>
+                      <div className="text-gray-600">Successful</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-yellow-600">
+                        {payments.filter(p => p.status === 'pending').length}
+                      </div>
+                      <div className="text-gray-600">Pending</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-600">
+                        {payments.filter(p => p.status === 'failed').length}
+                      </div>
+                      <div className="text-gray-600">Failed</div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </motion.div>
         )}

@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const ratingRoutes = require('./routes/ratings');
+const paymentRoutes = require("./routes/payments");
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -44,6 +45,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/treatments', treatmentRoutes);
 app.use('/api/ratings', ratingRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Global error handler (must be last)
 app.use(errorHandler);

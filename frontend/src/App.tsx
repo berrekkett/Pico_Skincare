@@ -10,6 +10,8 @@ import {
 import { api } from './lib/api';
 import Logo from './components/Logo';
 import ContactForm from './components/ContactForm';
+import CheckoutButton from "./components/CheckoutButton";
+
 
 type SectionId = 'home' | 'about' | 'treatments' | 'contact';
 
@@ -708,7 +710,6 @@ export default function App() {
                 transition={{ duration: 0.6, delay: index * 0.08 }}
                 viewport={{ once: true }}
                 whileHover={{ y: -10 }}
-                onClick={() => setSelectedTreatment(treatment)}
               >
                 <motion.div 
                   className="w-16 h-16 bg-gradient-to-br from-rose-400 to-peach-400 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300"
@@ -717,11 +718,15 @@ export default function App() {
                 >
                   <treatment.icon className="w-8 h-8 text-white" />
                 </motion.div>
+
+                {/* Title & Description */}
                 <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">{treatment.title}</h3>
                 <p className="text-gray-600 text-center font-['Lora'] mb-4">
                   {treatment.description}
                 </p>
-                <div className="flex justify-between items-center text-sm text-gray-500 border-t pt-4">
+
+                {/* Duration & Price */}
+                <div className="flex justify-between items-center text-sm text-gray-500 border-t pt-4 mb-4">
                   <div className="flex items-center space-x-1">
                     <Clock className="w-4 h-4" />
                     <span>{treatment.duration}</span>
@@ -731,6 +736,7 @@ export default function App() {
               </motion.div>
             ))}
           </div>
+
 
           <motion.div 
             className="text-center"
@@ -760,7 +766,7 @@ export default function App() {
             ) : null}
           </motion.div>
 
-          <StarRating />
+          {/* <StarRating /> */}
         </div>
       </section>
 
@@ -922,6 +928,7 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+                <StarRating />
               </div>
             </motion.div>
 
@@ -933,6 +940,7 @@ export default function App() {
             >
               <ContactForm />
             </motion.div>
+            
           </div>
         </div>
       </section>
