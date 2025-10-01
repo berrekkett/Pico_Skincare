@@ -6,6 +6,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
+const ratingRoutes = require('./routes/ratings');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -42,6 +43,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/treatments', treatmentRoutes);
+app.use('/api/ratings', ratingRoutes);
 
 // Global error handler (must be last)
 app.use(errorHandler);
